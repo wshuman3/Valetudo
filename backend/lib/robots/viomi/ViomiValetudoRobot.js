@@ -40,13 +40,6 @@ class ViomiValetudoRobot extends MiioValetudoRobot {
             this.waterGrades = attributes.WATER_GRADES;
         }
 
-
-        this.pollStateInterval = setInterval(() => {
-            this.pollState().catch(e => {
-                Logger.warn("Error while polling state", e);
-            });
-        }, 30000);
-
         this.ephemeralState = {
             carpetModeEnabled: undefined,
             lastOperationType: null,
@@ -225,7 +218,6 @@ class ViomiValetudoRobot extends MiioValetudoRobot {
         return this.state;
     }
 
-    //TODO: viomi repolls the map on status change to quick poll states. We probably should do the same
     parseAndUpdateState(data) {
         let newStateAttr;
 
@@ -458,6 +450,8 @@ class ViomiValetudoRobot extends MiioValetudoRobot {
         if (data["timezone"] !== undefined && data["timezone"] !== 0) {
             this.sendCommand("set_timezone", [0], {timeout: 12000}).then(_ => {
                 Logger.info("Viomi timezone adjusted to UTC");
+            }).catch(err => {
+                Logger.warn("Error while adjusting timezone to UTC");
             });
         }
 
@@ -549,11 +543,6 @@ class ViomiValetudoRobot extends MiioValetudoRobot {
 
             throw e;
         }
-    }
-
-    async shutdown() {
-        clearInterval(this.pollStateInterval);
-        await super.shutdown();
     }
 
     getManufacturer() {

@@ -64,7 +64,10 @@ class MiioSocket {
             // Logger.trace('incoming', this.name, incomingMsg);
             const decodedResponse = this.codec.handleResponse(incomingMsg);
             const token = decodedResponse.token;
-            if (token && token.toString("hex") !== "ffffffffffffffffffffffffffffffff" &&
+
+            if (
+                token &&
+                token.toString("hex") !== "ffffffffffffffffffffffffffffffff" &&
                 token.toString("hex") !== "00000000000000000000000000000000" &&
                 !(this.codec.token.equals(token))
             ) {
@@ -72,12 +75,15 @@ class MiioSocket {
                 this.token = token;
                 this.codec.setToken(token);
             }
+
             this.deviceId = decodedResponse.deviceId;
             const msg = decodedResponse.msg;
             const pending = msg && msg["id"] && this.pendingRequests[msg["id"]];
 
-            this.traceOrDebug((msg && msg["method"]) || (pending && pending.method),
-                "<<< " + this.name + (msg ? ":" : "*"), JSON.stringify(msg ?? {stamp: decodedResponse.stamp}));
+            this.traceOrDebug(
+                (msg && msg["method"]) || (pending && pending.method),
+                "<<< " + this.name + (msg ? ":" : "*"), JSON.stringify(msg ?? {stamp: decodedResponse.stamp})
+            );
 
             if (msg === null) {
                 // Logger.debug("<<|" + this.name, incomingMsg);
@@ -107,6 +113,7 @@ class MiioSocket {
                     if (this.stamp.val === undefined || this.stamp.val <= decodedResponse.stamp) {
                         // keep-alive packet. respond with echo
                         Logger.debug(">>> " + this.name + "*", JSON.stringify({stamp: decodedResponse.stamp}));
+
                         this.socket.send(incomingMsg, 0, incomingMsg.length, this.rinfo.port, this.rinfo.address);
                     } else {
                         /**
@@ -117,7 +124,7 @@ class MiioSocket {
                          * This could either be some kind of race condition or us misinterpreting something in the miio packet
                          * In any case, ignoring keep-alives for older stamps seems to help against it
                          */
-                        Logger.warn("MiioSocket " + this.name + ": Received keep-alive packet with stamp " + decodedResponse.stamp + " but we're at " + this.stamp.val + ". Discarding.");
+                        Logger.warn(`MiioSocket ${this.name}: Received keep-alive packet with stamp ${decodedResponse.stamp} but we're at ${this.stamp.val}. Discarding.`);
                     }
                 }
             }
@@ -130,7 +137,14 @@ class MiioSocket {
                         clearTimeout(pending.timeout_id);
 
                         if (msg["error"]) {
-                            Logger.info("Miio error response", msg);
+                            if (msg["error"].code === -9999 && msg["error"].message === "user ack timeout") {
+                                //We're reducing the loglevel of these messages as they're not very helpful and
+                                //can be problematic on e.g. viomi
+                                Logger.trace("Miio error response", msg);
+                            } else {
+                                Logger.info("Miio error response", msg);
+                            }
+
                             pending.reject(msg["error"]);
                         } else {
                             pending.resolve(msg["result"]);
@@ -173,8 +187,10 @@ class MiioSocket {
                 if (this.nextId > 0x7fffffff) { // assuming it's a signed 32bit integer
                     this.nextId = 0;
                 }
+
                 msg["id"] = this.nextId++;
             }
+
             if (msg !== null && msg !== undefined && !msg["result"] && !msg["error"]) {
                 this.pendingRequests[msg["id"]] = {
                     resolve: resolve,
@@ -200,6 +216,7 @@ class MiioSocket {
                     options.timeout || this.timeout
                 );
             }
+
             const payload = msg === null ? null : Buffer.from(JSON.stringify(msg), "utf8");
             const packet = this.codec.encode(payload, this.stamp.orNew(), this.deviceId);
 
@@ -238,6 +255,7 @@ class MiioSocket {
             } catch (err) {
                 // do nothing, no connection is open
             }
+
             this.socket.close(() => {
                 Logger.debug(this.name, "socket shutdown done");
                 resolve();
