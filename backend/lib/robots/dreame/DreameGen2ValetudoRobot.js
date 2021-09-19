@@ -91,6 +91,9 @@ const MIOT_SERVICES = Object.freeze({
                     11 - successfully located itself in its map
                  */
             },
+            OBSTACLE_AVOIDANCE: {
+                PIID: 21
+            },
             KEY_LOCK: {
                 PIID: 27
             }
@@ -117,6 +120,20 @@ const MIOT_SERVICES = Object.freeze({
         ACTIONS: {
             START_CHARGE: {
                 AIID: 1
+            }
+        }
+    },
+    DND: {
+        SIID: 5,
+        PROPERTIES: {
+            ENABLED: {
+                PIID: 1
+            },
+            START_TIME: {
+                PIID: 2
+            },
+            END_TIME: {
+                PIID: 3
             }
         }
     },
@@ -253,7 +270,7 @@ const MIOT_SERVICES = Object.freeze({
     AUTO_EMPTY_DOCK: {
         SIID: 15,
         PROPERTIES: {
-            ENABLED: {
+            AUTO_EMPTY_ENABLED: {
                 PIID: 1
             },
             INTERVAL: {
@@ -579,6 +596,24 @@ class DreameGen2ValetudoRobot extends DreameValetudoRobot {
             piid: MIOT_SERVICES.VACUUM_2.PROPERTIES.KEY_LOCK.PIID
         }));
 
+        this.registerCapability(new capabilities.DreameDoNotDisturbCapability({
+            robot: this,
+            miot_properties: {
+                dnd_enabled: {
+                    siid: MIOT_SERVICES.DND.SIID,
+                    piid: MIOT_SERVICES.DND.PROPERTIES.ENABLED.PIID
+                },
+                dnd_start_time: {
+                    siid: MIOT_SERVICES.DND.SIID,
+                    piid: MIOT_SERVICES.DND.PROPERTIES.START_TIME.PIID
+                },
+                dnd_end_time: {
+                    siid: MIOT_SERVICES.DND.SIID,
+                    piid: MIOT_SERVICES.DND.PROPERTIES.END_TIME.PIID
+                }
+            }
+        }));
+
         this.state.upsertFirstMatchingAttribute(new entities.state.attributes.AttachmentStateAttribute({
             type: entities.state.attributes.AttachmentStateAttribute.TYPE.WATERTANK,
             attached: false
@@ -786,6 +821,8 @@ class DreameGen2ValetudoRobot extends DreameValetudoRobot {
                         case MIOT_SERVICES.VACUUM_2.PROPERTIES.UNKNOWN_01.PIID:
                         case MIOT_SERVICES.VACUUM_2.PROPERTIES.LOCATING_STATUS.PIID:
                         case MIOT_SERVICES.VACUUM_2.PROPERTIES.CARPET_MODE.PIID:
+                        case MIOT_SERVICES.VACUUM_2.PROPERTIES.KEY_LOCK.PIID:
+                        case MIOT_SERVICES.VACUUM_2.PROPERTIES.OBSTACLE_AVOIDANCE.PIID:
                             //ignored for now
                             break;
 

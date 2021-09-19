@@ -1,4 +1,5 @@
 export enum Capability {
+    AutoEmptyDockManualTrigger = "AutoEmptyDockManualTriggerCapability",
     BasicControl = "BasicControlCapability",
     CarpetModeControl = "CarpetModeControlCapability",
     CombinedVirtualRestrictions = "CombinedVirtualRestrictionsCapability",
@@ -62,7 +63,7 @@ export interface MapSegmentationProperties {
         min: number;
         max: number;
     };
-    customOrderSupport: boolean
+    customOrderSupport: boolean;
 }
 
 export interface GoToLocation {
@@ -121,8 +122,138 @@ export interface SystemHostInfo {
     };
 }
 
+export interface SystemRuntimeInfo {
+    uptime: number;
+    argv: Array<string>;
+    execArgv: Array<string>;
+    execPath: string;
+    uid: number;
+    gid: number;
+    pid: number;
+    versions: Record<string, string>;
+    env: Record<string, string>
+}
+
 export interface MapSegmentationActionRequestParameters {
-    segment_ids: string[],
-    iterations?: number,
-    customOrder?: boolean
+    segment_ids: string[];
+    iterations?: number;
+    customOrder?: boolean;
+}
+
+export interface ConsumableState {
+    type: string;
+    subType?: string;
+    remaining: {
+        value: number;
+        unit: "percent" | "minutes";
+    }
+}
+
+export interface ConsumableId {
+    type: string;
+    subType?: string;
+}
+
+export interface Timer {
+    id: string;
+    enabled: boolean;
+    dow: Array<number>;
+    hour: number;
+    minute: number;
+    action: {
+        type: string;
+        params: Record<string, unknown>;
+    };
+}
+
+export interface TimerInformation {
+    [id: string]: Timer;
+}
+
+export interface TimerProperties {
+    supportedActions: Array<string>;
+}
+
+export interface MQTTConfiguration {
+    enabled: boolean;
+    connection: {
+        host: string;
+        port: number;
+        tls: {
+            enabled: boolean;
+            ca: string;
+        };
+        authentication: {
+            credentials: {
+                enabled: boolean;
+                username: string;
+                password: string;
+            };
+            clientCertificate: {
+                enabled: boolean;
+                certificate: string;
+                key: string;
+            };
+        };
+    };
+    identity: {
+        friendlyName: string;
+        identifier: string;
+    };
+    customizations: {
+        topicPrefix: string;
+        provideMapData: boolean;
+    };
+    interfaces: {
+        homie: {
+            enabled: boolean;
+            addICBINVMapProperty: boolean;
+            cleanAttributesOnShutdown: boolean;
+        };
+        homeassistant: {
+            enabled: boolean;
+            cleanAutoconfOnShutdown: boolean;
+        };
+    };
+}
+
+export interface MQTTProperties {
+    defaults: {
+        identity: {
+            friendlyName: string;
+            identifier: string;
+        };
+        customizations: {
+            topicPrefix: string;
+        };
+    };
+}
+
+export interface ValetudoEvent {
+    __class: string;
+    id: string;
+    timestamp: string;
+    processed: boolean;
+    type?: string;
+    subType?: string;
+    message?: string;
+}
+
+export interface ValetudoEventInteraction {
+    interaction: "ok" | "yes" | "no" | "reset";
+}
+
+// Helper for Hook
+export interface ValetudoEventInteractionContext {
+    id: string;
+    interaction: ValetudoEventInteraction;
+}
+
+export interface LogLevel {
+    current: string;
+    presets: Array<string>;
+}
+
+export interface SetLogLevel {
+    level: string;
 }

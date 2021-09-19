@@ -10,26 +10,44 @@ import {
 } from "react-query";
 import {
     BasicControlCommand,
+    deleteTimer,
     fetchCapabilities,
+    fetchConsumableStateInformation,
     fetchGoToLocationPresets,
     fetchLatestGitHubRelease,
     fetchMap,
     fetchMapSegmentationProperties,
+    fetchMQTTConfiguration,
+    fetchMQTTProperties,
     fetchPresetSelections,
     fetchRobotInformation,
     fetchSegments,
     fetchStateAttributes,
     fetchSystemHostInfo,
+    fetchSystemRuntimeInfo,
+    fetchTimerInformation,
+    fetchTimerProperties,
+    fetchValetudoEvents,
     fetchValetudoInformation,
+    fetchValetudoLog,
+    fetchValetudoLogLevel,
     fetchZonePresets,
     fetchZoneProperties,
+    sendAutoEmptyDockManualTriggerCommand,
     sendBasicControlCommand,
     sendCleanSegmentsCommand,
     sendCleanTemporaryZonesCommand,
     sendCleanZonePresetCommand,
+    sendConsumableReset,
     sendGoToCommand,
     sendGoToLocationPresetCommand,
     sendLocateCommand,
+    sendMQTTConfiguration,
+    sendTimerCreation,
+    sendTimerUpdate,
+    sendValetudoEventInteraction,
+    sendValetudoLogLevel,
+    subscribeToLogMessages,
     subscribeToMap,
     subscribeToStateAttributes,
     updatePresetSelection,
@@ -41,11 +59,26 @@ import {
     StatusState,
 } from "./RawRobotState";
 import { isAttribute } from "./utils";
-import {Capability, Point, MapSegmentationActionRequestParameters, Zone} from "./types";
+import {
+    Capability,
+    ConsumableId,
+    ConsumableState,
+    LogLevel,
+    MapSegmentationActionRequestParameters,
+    MQTTConfiguration,
+    Point,
+    SetLogLevel,
+    Timer,
+    TimerInformation,
+    ValetudoEvent,
+    ValetudoEventInteractionContext,
+    Zone,
+} from "./types";
 
 enum CacheKey {
     Capabilities = "capabilities",
     Map = "map",
+    Consumables = "consumables",
     Attributes = "attributes",
     PresetSelections = "preset_selections",
     ZonePresets = "zone_presets",
@@ -57,17 +90,36 @@ enum CacheKey {
     ValetudoVersion = "valetudo_version",
     GitHubRelease = "github_release",
     SystemHostInfo = "system_host_info",
+    SystemRuntimeInfo = "system_runtime_info",
+    MQTTConfiguration = "mqtt_configuration",
+    MQTTProperties = "mqtt_properties",
+    Timers = "timers",
+    TimerProperties = "timer_properties",
+    ValetudoEvents = "valetudo_events",
+    Log = "log",
+    LogLevel = "log_level",
 }
 
-const useOnCommandError = (capability: Capability): (() => void) => {
+const useOnCommandError = (capability: Capability): ((error: unknown) => void) => {
     const { enqueueSnackbar } = useSnackbar();
 
-    return React.useCallback(() => {
-        enqueueSnackbar(`An error occured while sending command to ${capability}`, {
+    return React.useCallback((error: unknown) => {
+        enqueueSnackbar(`An error occurred while sending command to ${capability}: ${error}`, {
             preventDuplicate: true,
             key: capability,
         });
     }, [capability, enqueueSnackbar]);
+};
+
+const useOnSettingsChangeError = (setting: string): ((error: unknown) => void) => {
+    const { enqueueSnackbar } = useSnackbar();
+
+    return React.useCallback((error: unknown) => {
+        enqueueSnackbar(`An error occurred while updating ${setting} settings: ${error}`, {
+            preventDuplicate: true,
+            key: setting,
+        });
+    }, [setting, enqueueSnackbar]);
 };
 
 const useSSECacheUpdater = <T>(
@@ -79,6 +131,27 @@ const useSSECacheUpdater = <T>(
     React.useEffect(() => {
         return subscriber((data) => {
             return queryClient.setQueryData(key, data);
+        });
+    }, [key, queryClient, subscriber]);
+};
+
+const useSSECacheAppender = <T>(
+    key: CacheKey,
+    subscriber: (listener: (data: T) => void) => () => void,
+): void => {
+    const queryClient = useQueryClient();
+
+    React.useEffect(() => {
+        return subscriber((data) => {
+            let currentLog = queryClient.getQueryData(key);
+            let newData;
+            if (typeof currentLog === "string" || currentLog instanceof String) {
+                currentLog = currentLog.trim();
+                newData = `${currentLog}\n${data}`;
+            } else {
+                newData = `${data}`;
+            }
+            return queryClient.setQueryData(key, newData);
         });
     }, [key, queryClient, subscriber]);
 };
@@ -159,9 +232,9 @@ export const capabilityToPresetType: Record<
     Parameters<typeof usePresetSelectionMutation>[0],
     PresetSelectionState["type"]
     > = {
-    [Capability.FanSpeedControl]: "fan_speed",
-    [Capability.WaterUsageControl]: "water_grade",
-};
+        [Capability.FanSpeedControl]: "fan_speed",
+        [Capability.WaterUsageControl]: "water_grade",
+    };
 export const usePresetSelectionMutation = (
     capability: Capability.FanSpeedControl | Capability.WaterUsageControl
 ) => {
@@ -228,9 +301,7 @@ export const useGoToMutation = (
 };
 
 export const useZonePresetsQuery = () => {
-    return useQuery(CacheKey.ZonePresets, fetchZonePresets, {
-        staleTime: Infinity,
-    });
+    return useQuery(CacheKey.ZonePresets, fetchZonePresets);
 };
 
 export const useZonePropertiesQuery = () => {
@@ -286,12 +357,12 @@ export const useCleanTemporaryZonesMutation = (
 };
 
 export const useSegmentsQuery = () => {
-    return useQuery(CacheKey.Segments, fetchSegments, { staleTime: Infinity });
+    return useQuery(CacheKey.Segments, fetchSegments);
 };
 
 export const useMapSegmentationPropertiesQuery = () => {
     return useQuery(CacheKey.MapSegmentationProperties, fetchMapSegmentationProperties, {
-        staleTime: Infinity,
+        staleTime: Infinity
     });
 };
 
@@ -319,9 +390,7 @@ export const useCleanSegmentsMutation = (
 };
 
 export const useGoToLocationPresetsQuery = () => {
-    return useQuery(CacheKey.GoToLocationPresets, fetchGoToLocationPresets, {
-        staleTime: Infinity,
-    });
+    return useQuery(CacheKey.GoToLocationPresets, fetchGoToLocationPresets);
 };
 
 export const useGoToLocationPresetMutation = (
@@ -353,6 +422,35 @@ export const useLocateMutation = () => {
     return useMutation(sendLocateCommand, { onError });
 };
 
+export const useConsumableStateQuery = () => {
+    return useQuery(CacheKey.Consumables, fetchConsumableStateInformation);
+};
+
+export const useConsumableResetMutation = () => {
+    const queryClient = useQueryClient();
+    const onError = useOnCommandError(Capability.ConsumableMonitoring);
+
+    return useMutation(
+        (parameters: ConsumableId) => {
+            return sendConsumableReset(parameters).then(fetchConsumableStateInformation);
+        },
+        {
+            onSuccess(data) {
+                queryClient.setQueryData<Array<ConsumableState>>(CacheKey.Consumables, data, {
+                    updatedAt: Date.now(),
+                });
+            },
+            onError,
+        }
+    );
+};
+
+export const useAutoEmptyDockManualTriggerMutation = () => {
+    const onError = useOnCommandError(Capability.AutoEmptyDockManualTrigger);
+
+    return useMutation(sendAutoEmptyDockManualTriggerCommand, { onError });
+};
+
 export const useRobotInformationQuery = () => {
     return useQuery(CacheKey.RobotInformation, fetchRobotInformation, {
         staleTime: Infinity,
@@ -372,7 +470,167 @@ export const useLatestGitHubReleaseLazyQuery = () => {
 };
 
 export const useSystemHostInfoQuery = () => {
-    return useQuery(CacheKey.SystemHostInfo, fetchSystemHostInfo, {
+    return useQuery(CacheKey.SystemHostInfo, fetchSystemHostInfo);
+};
+
+export const useSystemRuntimeInfoQuery = () => {
+    return useQuery(CacheKey.SystemRuntimeInfo, fetchSystemRuntimeInfo);
+};
+
+export const useMQTTConfigurationQuery = () => {
+    return useQuery(CacheKey.MQTTConfiguration, fetchMQTTConfiguration);
+};
+
+export const useMQTTConfigurationMutation = () => {
+    const queryClient = useQueryClient();
+    const onError = useOnSettingsChangeError("MQTT");
+
+    return useMutation(
+        (mqttConfiguration: MQTTConfiguration) => {
+            return sendMQTTConfiguration(mqttConfiguration).then(fetchMQTTConfiguration);
+        },
+        {
+            onSuccess(data) {
+                queryClient.setQueryData<MQTTConfiguration>(CacheKey.MQTTConfiguration, data, {
+                    updatedAt: Date.now(),
+                });
+            },
+            onError,
+        }
+    );
+};
+
+export const useMQTTPropertiesQuery = () => {
+    return useQuery(CacheKey.MQTTProperties, fetchMQTTProperties, {
         staleTime: Infinity,
     });
+};
+
+export const useTimerInfoQuery = () => {
+    return useQuery(CacheKey.Timers, fetchTimerInformation);
+};
+
+export const useTimerPropertiesQuery = () => {
+    return useQuery(CacheKey.TimerProperties, fetchTimerProperties, {
+        staleTime: Infinity
+    });
+};
+
+export const useTimerCreationMutation = () => {
+    const queryClient = useQueryClient();
+    const onError = useOnSettingsChangeError("Timer");
+
+    return useMutation(
+        (timer: Timer) => {
+            return sendTimerCreation(timer).then(fetchTimerInformation);
+        },
+        {
+            onSuccess(data) {
+                queryClient.setQueryData<TimerInformation>(CacheKey.Timers, data, {
+                    updatedAt: Date.now(),
+                });
+            },
+            onError,
+        }
+    );
+};
+
+export const useTimerModificationMutation = () => {
+    const queryClient = useQueryClient();
+    const onError = useOnSettingsChangeError("Timer");
+
+    return useMutation(
+        (timer: Timer) => {
+            return sendTimerUpdate(timer).then(fetchTimerInformation);
+        },
+        {
+            onSuccess(data) {
+                queryClient.setQueryData<TimerInformation>(CacheKey.Timers, data, {
+                    updatedAt: Date.now(),
+                });
+            },
+            onError,
+        }
+    );
+};
+
+export const useTimerDeletionMutation = () => {
+    const queryClient = useQueryClient();
+    const onError = useOnSettingsChangeError("Timer");
+
+    return useMutation(
+        (timerId: string) => {
+            return deleteTimer(timerId).then(fetchTimerInformation);
+        },
+        {
+            onSuccess(data) {
+                queryClient.setQueryData<TimerInformation>(CacheKey.Timers, data, {
+                    updatedAt: Date.now(),
+                });
+            },
+            onError,
+        }
+    );
+};
+
+export const useValetudoEventsQuery = () => {
+    return useQuery(CacheKey.ValetudoEvents, fetchValetudoEvents, {
+        staleTime: 30_000,
+        refetchInterval: 30_000
+    });
+};
+
+export const useValetudoEventsInteraction = () => {
+    const queryClient = useQueryClient();
+    const onError = useOnSettingsChangeError("Valetudo Events");
+
+    return useMutation(
+        (interaction: ValetudoEventInteractionContext) => {
+            return sendValetudoEventInteraction(interaction).then(fetchValetudoEvents);
+        },
+        {
+            onSuccess(data) {
+                queryClient.setQueryData<Array<ValetudoEvent>>(CacheKey.ValetudoEvents, data, {
+                    updatedAt: Date.now(),
+                });
+            },
+            onError,
+        }
+    );
+};
+
+export function useValetudoLogQuery(): UseQueryResult<string>;
+export function useValetudoLogQuery<T>(
+    select: (status: StatusState) => T
+): UseQueryResult<T>;
+export function useValetudoLogQuery() {
+    useSSECacheAppender(CacheKey.Log, subscribeToLogMessages);
+    return useQuery(CacheKey.Log, fetchValetudoLog, {
+        staleTime: Infinity,
+    });
+}
+
+export const useLogLevelQuery = () => {
+    return useQuery(CacheKey.LogLevel, fetchValetudoLogLevel, {
+        staleTime: Infinity
+    });
+};
+
+export const useLogLevelMutation = () => {
+    const queryClient = useQueryClient();
+    const onError = useOnSettingsChangeError("Log level");
+
+    return useMutation(
+        (logLevel: SetLogLevel) => {
+            return sendValetudoLogLevel(logLevel).then(fetchValetudoLogLevel);
+        },
+        {
+            onSuccess(data) {
+                queryClient.setQueryData<LogLevel>(CacheKey.LogLevel, data, {
+                    updatedAt: Date.now(),
+                });
+            },
+            onError,
+        }
+    );
 };

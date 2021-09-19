@@ -1,4 +1,7 @@
 const capabilities = require("./capabilities");
+const DustBinFullValetudoEvent = require("../../valetudo_events/events/DustBinFullValetudoEvent");
+const ErrorStateValetudoEvent = require("../../valetudo_events/events/ErrorStateValetudoEvent");
+const PendingMapChangeValetudoEvent = require("../../valetudo_events/events/PendingMapChangeValetudoEvent");
 const ValetudoRobot = require("../../core/ValetudoRobot");
 const { MapLayer, PointMapEntity, ValetudoMap } = require("../../entities/map");
 
@@ -26,8 +29,17 @@ class MockRobot extends ValetudoRobot {
         this.registerCapability(new capabilities.MockGoToLocationCapability({robot: this}));
         this.registerCapability(new capabilities.MockMapResetCapability({robot: this}));
         this.registerCapability(new capabilities.MockPersistentMapControlCapability({robot: this}));
+        this.registerCapability(new capabilities.MockPendingMapChangeHandlingCapability({robot: this}));
         this.registerCapability(new capabilities.MockMapSegmentationCapability({robot: this}));
         this.registerCapability(new capabilities.MockZoneCleaningCapability({robot: this}));
+        this.registerCapability(new capabilities.MockAutoEmptyDockManualTriggerCapability({robot: this}));
+
+        // Raise events to make them visible in the UI
+        options.valetudoEventStore.raise(new DustBinFullValetudoEvent({}));
+        options.valetudoEventStore.raise(new PendingMapChangeValetudoEvent({}));
+        options.valetudoEventStore.raise(new ErrorStateValetudoEvent({
+            message: "This is an error message"
+        }));
     }
 
     getManufacturer() {
@@ -72,6 +84,9 @@ class MockRobot extends ValetudoRobot {
             }
         };
         this.state.map = new ValetudoMap({
+            metaData: {
+                pendingMapChange: true,
+            },
             size: {
                 x: this.mockMap.size,
                 y: this.mockMap.size

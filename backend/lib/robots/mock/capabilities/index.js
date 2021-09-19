@@ -1,4 +1,5 @@
 module.exports = {
+    MockAutoEmptyDockManualTriggerCapability: require("./MockAutoEmptyDockManualTriggerCapability"),
     MockBasicControlCapability: require("./MockBasicControlCapability"),
     MockCarpetModeControlCapability: require("./MockCarpetModeControlCapability"),
     MockConsumableMonitoringCapability: require("./MockConsumableMonitoringCapability"),
@@ -8,6 +9,7 @@ module.exports = {
     MockLocateCapability: require("./MockLocateCapability"),
     MockMapResetCapability: require("./MockMapResetCapability"),
     MockMapSegmentationCapability: require("./MockMapSegmentationCapability"),
+    MockPendingMapChangeHandlingCapability: require("./MockPendingMapChangeHandlingCapability"),
     MockPersistentMapControlCapability: require("./MockPersistentMapControlCapability"),
     MockSpeakerTestCapability: require("./MockSpeakerTestCapability"),
     MockSpeakerVolumeControlCapability: require("./MockSpeakerVolumeControlCapability"),
