@@ -1,14 +1,12 @@
 import {
     Box,
-    CircularProgress,
     Container,
     Fab,
-    Fade,
     Grid,
     styled,
     Typography,
-} from "@material-ui/core";
-import AddIcon from "@material-ui/icons/Add";
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 import React from "react";
 import {
     Timer,
@@ -23,6 +21,7 @@ import {
 import TimerCard from "./TimerCard";
 import TimerEditDialog from "./TimerEditDialog";
 import { deepCopy } from "../../utils";
+import LoadingFade from "../../components/LoadingFade";
 
 const FabBox = styled(Box)(({ theme }) => {
     return {
@@ -101,15 +100,7 @@ const Timers = (): JSX.Element => {
 
     if (timerDataLoading || timerPropertiesLoading) {
         return (
-            <Fade
-                in
-                style={{
-                    transitionDelay: "500ms",
-                }}
-                unmountOnExit
-            >
-                <CircularProgress />
-            </Fade>
+            <LoadingFade/>
         );
     }
 

@@ -21,6 +21,7 @@ class RoborockManualControlCapability extends ManualControlCapability {
         }));
 
         this.sequenceId = 0;
+        this.active = false;
     }
 
     /**
@@ -28,6 +29,7 @@ class RoborockManualControlCapability extends ManualControlCapability {
      */
     async enableManualControl() {
         this.sequenceId = 0;
+        this.active = true;
 
         return this.robot.sendCommand("app_rc_start", [], {});
     }
@@ -37,8 +39,16 @@ class RoborockManualControlCapability extends ManualControlCapability {
      */
     async disableManualControl() {
         this.sequenceId = 0;
+        this.active = false;
 
         return this.robot.sendCommand("app_rc_end", [], {});
+    }
+
+    /**
+     * @returns {Promise<boolean>}
+     */
+    async manualControlActive() {
+        return this.active;
     }
 
     /**

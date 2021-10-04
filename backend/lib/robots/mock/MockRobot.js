@@ -24,6 +24,8 @@ class MockRobot extends ValetudoRobot {
         this.registerCapability(new capabilities.MockWaterUsageControlCapability({robot: this}));
         this.registerCapability(new capabilities.MockSpeakerVolumeControlCapability({robot: this}));
         this.registerCapability(new capabilities.MockSpeakerTestCapability({robot: this}));
+        this.registerCapability(new capabilities.MockKeyLockCapability({robot: this}));
+        this.registerCapability(new capabilities.MockObstacleAvoidanceControlCapability({robot: this}));
         this.registerCapability(new capabilities.MockLocateCapability({robot: this}));
         this.registerCapability(new capabilities.MockWifiConfigurationCapability({robot: this}));
         this.registerCapability(new capabilities.MockGoToLocationCapability({robot: this}));
@@ -33,6 +35,10 @@ class MockRobot extends ValetudoRobot {
         this.registerCapability(new capabilities.MockMapSegmentationCapability({robot: this}));
         this.registerCapability(new capabilities.MockZoneCleaningCapability({robot: this}));
         this.registerCapability(new capabilities.MockAutoEmptyDockManualTriggerCapability({robot: this}));
+        this.registerCapability(new capabilities.MockAutoEmptyDockAutoEmptyControlCapability({robot: this}));
+        this.registerCapability(new capabilities.MockMappingPassCapability({robot: this}));
+        this.registerCapability(new capabilities.MockVoicePackManagementCapability({robot: this}));
+        this.registerCapability(new capabilities.MockManualControlCapability({robot: this}));
 
         // Raise events to make them visible in the UI
         options.valetudoEventStore.raise(new DustBinFullValetudoEvent({}));
@@ -138,7 +144,7 @@ class MockRobot extends ValetudoRobot {
     buildCharger() {
         return new PointMapEntity({
             type: PointMapEntity.TYPE.CHARGER_LOCATION,
-            points: [this.mockMap.range.min * this.mockMap.pixelSize + 20, this.mockMap.range.min * this.mockMap.pixelSize]
+            points: [this.mockMap.range.min * this.mockMap.pixelSize + 50, this.mockMap.range.min * this.mockMap.pixelSize]
         });
     }
 
@@ -148,7 +154,10 @@ class MockRobot extends ValetudoRobot {
     buildRobot() {
         return new PointMapEntity({
             type: PointMapEntity.TYPE.ROBOT_POSITION,
-            points: [this.mockMap.range.min * this.mockMap.pixelSize + 20, this.mockMap.range.min * this.mockMap.pixelSize + 20]
+            points: [this.mockMap.range.min * this.mockMap.pixelSize + 50, this.mockMap.range.min * this.mockMap.pixelSize + 50],
+            metaData: {
+                angle: 180
+            }
         });
     }
 }

@@ -8,9 +8,10 @@ import {
     MenuItem,
     Paper,
     Select,
+    SelectChangeEvent,
     styled,
     Typography,
-} from "@material-ui/core";
+} from "@mui/material";
 import React from "react";
 import {
     Capability,
@@ -44,7 +45,7 @@ const ZonePresets = (): JSX.Element => {
     const canClean = status === "idle" || status === "docked";
 
     const handleChange = React.useCallback(
-        (event: React.ChangeEvent<{ value: unknown }>) => {
+        (event: SelectChangeEvent<string>) => {
             setSelected(event.target.value as string);
         },
         []

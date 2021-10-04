@@ -1,4 +1,5 @@
 export enum Capability {
+    AutoEmptyDockAutoEmptyControl = "AutoEmptyDockAutoEmptyControlCapability",
     AutoEmptyDockManualTrigger = "AutoEmptyDockManualTriggerCapability",
     BasicControl = "BasicControlCapability",
     CarpetModeControl = "CarpetModeControlCapability",
@@ -8,6 +9,7 @@ export enum Capability {
     DoNotDisturb = "DoNotDisturbCapability",
     FanSpeedControl = "FanSpeedControlCapability",
     GoToLocation = "GoToLocationCapability",
+    KeyLock = "KeyLockCapability",
     LEDControl = "LEDControlCapability",
     Locate = "LocateCapability",
     ManualControl = "ManualControlCapability",
@@ -16,6 +18,8 @@ export enum Capability {
     MapSegmentRename = "MapSegmentRenameCapability",
     MapSegmentation = "MapSegmentationCapability",
     MapSnapshot = "MapSnapshotCapability",
+    MappingPass = "MappingPassCapability",
+    ObstacleAvoidanceControl = "ObstacleAvoidanceControlCapability",
     PersistentMapControl = "PersistentMapControlCapability",
     SensorCalibration = "SensorCalibrationCapability",
     SpeakerTest = "SpeakerTestCapability",
@@ -229,6 +233,27 @@ export interface MQTTProperties {
     };
 }
 
+export interface HTTPBasicAuthConfiguration {
+    enabled: boolean;
+    username: string;
+    password: string;
+}
+
+export interface NTPClientState {
+    timestamp: string;
+    type?: "unknown" | "transient" | "name_resolution" | "connection" | "persisting";
+    message?: string;
+    offset?: number;
+}
+
+export interface NTPClientConfiguration {
+    enabled: boolean;
+    server: string;
+    port: number;
+    interval: number;
+    timeout: number;
+}
+
 export interface ValetudoEvent {
     __class: string;
     id: string;
@@ -256,4 +281,69 @@ export interface LogLevel {
 
 export interface SetLogLevel {
     level: string;
+}
+
+export interface SimpleToggleState {
+    enabled: boolean;
+}
+
+export interface SpeakerVolumeState {
+    volume: number;
+}
+
+export interface VoicePackManagementStatus {
+    currentLanguage: string;
+    operationStatus: {
+        type: "idle" | "downloading" | "installing" | "error";
+        progress?: number;
+    }
+}
+
+export interface VoicePackManagementCommand {
+    action: "download";
+    url: string;
+    language: string;
+    hash: string;
+}
+
+export interface DoNotDisturbTime {
+    hour: number;
+    minute: number;
+}
+
+export interface DoNotDisturbConfiguration {
+    enabled: boolean;
+    start: DoNotDisturbTime;
+    end: DoNotDisturbTime;
+}
+
+export interface WifiConfiguration {
+    ssid?: string;
+    credentials?: {
+        type: "wpa2_psk";
+        typeSpecificSettings: {
+            password: string;
+        };
+    }
+    details?: {
+        state: "connected" | "not_connected" | "unknown";
+        downspeed?: number;
+        upspeed?: number;
+        signal?: number;
+        ips: string[];
+        frequency: "2.4ghz" | "5ghz";
+    };
+}
+
+export type ManualControlAction = "enable" | "disable" | "move";
+
+export type ManualControlCommand = "forward" | "backward" | "rotate_clockwise" | "rotate_counterclockwise";
+
+export interface ManualControlProperties {
+    supportedMovementCommands: Array<ManualControlCommand>;
+}
+
+export interface ManualControlInteraction {
+    action: ManualControlAction;
+    movementCommand?: ManualControlCommand;
 }

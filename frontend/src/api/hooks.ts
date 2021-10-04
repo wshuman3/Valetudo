@@ -11,17 +11,29 @@ import {
 import {
     BasicControlCommand,
     deleteTimer,
+    fetchAutoEmptyDockAutoEmptyControlState,
     fetchCapabilities,
+    fetchCarpetModeState,
     fetchConsumableStateInformation,
+    fetchDoNotDisturbConfiguration,
     fetchGoToLocationPresets,
+    fetchHTTPBasicAuthConfiguration,
+    fetchKeyLockState,
     fetchLatestGitHubRelease,
+    fetchManualControlProperties,
+    fetchManualControlState,
     fetchMap,
     fetchMapSegmentationProperties,
     fetchMQTTConfiguration,
     fetchMQTTProperties,
+    fetchNTPClientConfiguration,
+    fetchNTPClientState,
+    fetchObstacleAvoidanceModeState,
+    fetchPersistentDataState,
     fetchPresetSelections,
     fetchRobotInformation,
     fetchSegments,
+    fetchSpeakerVolumeState,
     fetchStateAttributes,
     fetchSystemHostInfo,
     fetchSystemRuntimeInfo,
@@ -31,22 +43,39 @@ import {
     fetchValetudoInformation,
     fetchValetudoLog,
     fetchValetudoLogLevel,
+    fetchVoicePackManagementState,
+    fetchWifiConfiguration,
     fetchZonePresets,
     fetchZoneProperties,
+    sendAutoEmptyDockAutoEmptyControlEnable,
     sendAutoEmptyDockManualTriggerCommand,
     sendBasicControlCommand,
+    sendCarpetModeEnable,
     sendCleanSegmentsCommand,
     sendCleanTemporaryZonesCommand,
     sendCleanZonePresetCommand,
     sendConsumableReset,
+    sendDoNotDisturbConfiguration,
     sendGoToCommand,
     sendGoToLocationPresetCommand,
+    sendHTTPBasicAuthConfiguration,
+    sendKeyLockEnable,
     sendLocateCommand,
+    sendManualControlInteraction,
+    sendMapReset,
     sendMQTTConfiguration,
+    sendNTPClientConfiguration,
+    sendObstacleAvoidanceModeEnable,
+    sendPersistentDataEnable,
+    sendSpeakerTestCommand,
+    sendSpeakerVolume,
+    sendStartMappingPass,
     sendTimerCreation,
     sendTimerUpdate,
     sendValetudoEventInteraction,
     sendValetudoLogLevel,
+    sendVoicePackManagementCommand,
+    sendWifiConfiguration,
     subscribeToLogMessages,
     subscribeToMap,
     subscribeToStateAttributes,
@@ -62,18 +91,22 @@ import { isAttribute } from "./utils";
 import {
     Capability,
     ConsumableId,
-    ConsumableState,
-    LogLevel,
+    DoNotDisturbConfiguration,
+    HTTPBasicAuthConfiguration,
+    ManualControlInteraction,
     MapSegmentationActionRequestParameters,
     MQTTConfiguration,
+    NTPClientConfiguration,
+    NTPClientState,
     Point,
     SetLogLevel,
     Timer,
-    TimerInformation,
-    ValetudoEvent,
     ValetudoEventInteractionContext,
+    VoicePackManagementCommand,
+    WifiConfiguration,
     Zone,
 } from "./types";
+import {MutationFunction} from "react-query/types/core/types";
 
 enum CacheKey {
     Capabilities = "capabilities",
@@ -86,38 +119,54 @@ enum CacheKey {
     Segments = "segments",
     MapSegmentationProperties = "map_segmentation_properties",
     GoToLocationPresets = "go_to_location_presets",
+    PersistentData = "persistent_data",
     RobotInformation = "robot_information",
     ValetudoVersion = "valetudo_version",
     GitHubRelease = "github_release",
+    CarpetMode = "carpet_mode",
+    SpeakerVolume = "speaker_volume",
+    VoicePackManagement = "voice_pack",
     SystemHostInfo = "system_host_info",
     SystemRuntimeInfo = "system_runtime_info",
     MQTTConfiguration = "mqtt_configuration",
     MQTTProperties = "mqtt_properties",
+    HTTPBasicAuth = "http_basic_auth",
+    NTPClientState = "ntp_client_state",
+    NTPClientConfiguration = "ntp_client_configuration",
     Timers = "timers",
     TimerProperties = "timer_properties",
     ValetudoEvents = "valetudo_events",
     Log = "log",
     LogLevel = "log_level",
+    KeyLockInformation = "key_lock",
+    ObstacleAvoidance = "obstacle_avoidance",
+    AutoEmptyDockAutoEmpty = "auto_empty_dock_auto_empty",
+    DoNotDisturb = "do_not_disturb",
+    Wifi = "wifi",
+    ManualControl = "manual_control",
+    ManualControlProperties = "manual_control_properties",
 }
 
 const useOnCommandError = (capability: Capability): ((error: unknown) => void) => {
-    const { enqueueSnackbar } = useSnackbar();
+    const {enqueueSnackbar} = useSnackbar();
 
     return React.useCallback((error: unknown) => {
         enqueueSnackbar(`An error occurred while sending command to ${capability}: ${error}`, {
             preventDuplicate: true,
             key: capability,
+            variant: "error",
         });
     }, [capability, enqueueSnackbar]);
 };
 
 const useOnSettingsChangeError = (setting: string): ((error: unknown) => void) => {
-    const { enqueueSnackbar } = useSnackbar();
+    const {enqueueSnackbar} = useSnackbar();
 
     return React.useCallback((error: unknown) => {
         enqueueSnackbar(`An error occurred while updating ${setting} settings: ${error}`, {
             preventDuplicate: true,
             key: setting,
+            variant: "error",
         });
     }, [setting, enqueueSnackbar]);
 };
@@ -228,10 +277,8 @@ export const usePresetSelectionsQuery = (
     );
 };
 
-export const capabilityToPresetType: Record<
-    Parameters<typeof usePresetSelectionMutation>[0],
-    PresetSelectionState["type"]
-    > = {
+export const capabilityToPresetType: Record<Parameters<typeof usePresetSelectionMutation>[0],
+    PresetSelectionState["type"]> = {
         [Capability.FanSpeedControl]: "fan_speed",
         [Capability.WaterUsageControl]: "water_grade",
     };
@@ -373,7 +420,7 @@ export const useCleanSegmentsMutation = (
     const onError = useOnCommandError(Capability.MapSegmentation);
 
     return useMutation(
-        (parameters : MapSegmentationActionRequestParameters) => {
+        (parameters: MapSegmentationActionRequestParameters) => {
             return sendCleanSegmentsCommand(parameters).then(fetchStateAttributes);
         },
         {
@@ -419,28 +466,35 @@ export const useGoToLocationPresetMutation = (
 export const useLocateMutation = () => {
     const onError = useOnCommandError(Capability.Locate);
 
-    return useMutation(sendLocateCommand, { onError });
+    return useMutation(sendLocateCommand, {onError});
 };
 
 export const useConsumableStateQuery = () => {
     return useQuery(CacheKey.Consumables, fetchConsumableStateInformation);
 };
 
-export const useConsumableResetMutation = () => {
+const useValetudoFetchingMutation = <TData, TVariables>(onError: ((error: unknown) => void), cacheKey: CacheKey, mutationFn: MutationFunction<TData, TVariables>) => {
     const queryClient = useQueryClient();
-    const onError = useOnCommandError(Capability.ConsumableMonitoring);
 
     return useMutation(
-        (parameters: ConsumableId) => {
-            return sendConsumableReset(parameters).then(fetchConsumableStateInformation);
-        },
+        mutationFn,
         {
             onSuccess(data) {
-                queryClient.setQueryData<Array<ConsumableState>>(CacheKey.Consumables, data, {
+                queryClient.setQueryData<TData>(cacheKey, data, {
                     updatedAt: Date.now(),
                 });
             },
-            onError,
+            onError
+        }
+    );
+};
+
+export const useConsumableResetMutation = () => {
+    return useValetudoFetchingMutation(
+        useOnCommandError(Capability.ConsumableMonitoring),
+        CacheKey.Consumables,
+        (parameters: ConsumableId) => {
+            return sendConsumableReset(parameters).then(fetchConsumableStateInformation);
         }
     );
 };
@@ -448,7 +502,7 @@ export const useConsumableResetMutation = () => {
 export const useAutoEmptyDockManualTriggerMutation = () => {
     const onError = useOnCommandError(Capability.AutoEmptyDockManualTrigger);
 
-    return useMutation(sendAutoEmptyDockManualTriggerCommand, { onError });
+    return useMutation(sendAutoEmptyDockManualTriggerCommand, {onError});
 };
 
 export const useRobotInformationQuery = () => {
@@ -478,24 +532,17 @@ export const useSystemRuntimeInfoQuery = () => {
 };
 
 export const useMQTTConfigurationQuery = () => {
-    return useQuery(CacheKey.MQTTConfiguration, fetchMQTTConfiguration);
+    return useQuery(CacheKey.MQTTConfiguration, fetchMQTTConfiguration, {
+        staleTime: Infinity,
+    });
 };
 
 export const useMQTTConfigurationMutation = () => {
-    const queryClient = useQueryClient();
-    const onError = useOnSettingsChangeError("MQTT");
-
-    return useMutation(
+    return useValetudoFetchingMutation(
+        useOnSettingsChangeError("MQTT"),
+        CacheKey.MQTTConfiguration,
         (mqttConfiguration: MQTTConfiguration) => {
             return sendMQTTConfiguration(mqttConfiguration).then(fetchMQTTConfiguration);
-        },
-        {
-            onSuccess(data) {
-                queryClient.setQueryData<MQTTConfiguration>(CacheKey.MQTTConfiguration, data, {
-                    updatedAt: Date.now(),
-                });
-            },
-            onError,
         }
     );
 };
@@ -504,6 +551,56 @@ export const useMQTTPropertiesQuery = () => {
     return useQuery(CacheKey.MQTTProperties, fetchMQTTProperties, {
         staleTime: Infinity,
     });
+};
+
+export const useHTTPBasicAuthConfigurationQuery = () => {
+    return useQuery(CacheKey.HTTPBasicAuth, fetchHTTPBasicAuthConfiguration, {
+        staleTime: Infinity,
+    });
+};
+
+export const useHTTPBasicAuthConfigurationMutation = () => {
+    return useValetudoFetchingMutation(
+        useOnSettingsChangeError("HTTP Basic Auth"),
+        CacheKey.HTTPBasicAuth,
+        (configuration: HTTPBasicAuthConfiguration) => {
+            return sendHTTPBasicAuthConfiguration(configuration).then(fetchHTTPBasicAuthConfiguration);
+        }
+    );
+};
+
+export const useNTPClientStateQuery = () => {
+    return useQuery(CacheKey.NTPClientState, fetchNTPClientState, {
+        staleTime: 600_000,
+    });
+};
+
+export const useNTPClientConfigurationQuery = () => {
+    return useQuery(CacheKey.NTPClientConfiguration, fetchNTPClientConfiguration, {
+        staleTime: Infinity,
+    });
+};
+
+export const useNTPClientConfigurationMutation = () => {
+    const queryClient = useQueryClient();
+    const onError = useOnSettingsChangeError("NTP Client");
+
+    return useMutation(
+        (configuration: NTPClientConfiguration) => {
+            return sendNTPClientConfiguration(configuration).then(fetchNTPClientConfiguration).then((configuration) => {
+                queryClient.setQueryData<NTPClientConfiguration>(CacheKey.NTPClientConfiguration, configuration, {
+                    updatedAt: Date.now(),
+                });
+            }).then(fetchNTPClientState).then((state) => {
+                queryClient.setQueryData<NTPClientState>(CacheKey.NTPClientState, state, {
+                    updatedAt: Date.now(),
+                });
+            });
+        },
+        {
+            onError
+        }
+    );
 };
 
 export const useTimerInfoQuery = () => {
@@ -517,58 +614,31 @@ export const useTimerPropertiesQuery = () => {
 };
 
 export const useTimerCreationMutation = () => {
-    const queryClient = useQueryClient();
-    const onError = useOnSettingsChangeError("Timer");
-
-    return useMutation(
+    return useValetudoFetchingMutation(
+        useOnSettingsChangeError("Timer"),
+        CacheKey.Timers,
         (timer: Timer) => {
             return sendTimerCreation(timer).then(fetchTimerInformation);
-        },
-        {
-            onSuccess(data) {
-                queryClient.setQueryData<TimerInformation>(CacheKey.Timers, data, {
-                    updatedAt: Date.now(),
-                });
-            },
-            onError,
         }
     );
 };
 
 export const useTimerModificationMutation = () => {
-    const queryClient = useQueryClient();
-    const onError = useOnSettingsChangeError("Timer");
-
-    return useMutation(
+    return useValetudoFetchingMutation(
+        useOnSettingsChangeError("Timer"),
+        CacheKey.Timers,
         (timer: Timer) => {
             return sendTimerUpdate(timer).then(fetchTimerInformation);
-        },
-        {
-            onSuccess(data) {
-                queryClient.setQueryData<TimerInformation>(CacheKey.Timers, data, {
-                    updatedAt: Date.now(),
-                });
-            },
-            onError,
         }
     );
 };
 
 export const useTimerDeletionMutation = () => {
-    const queryClient = useQueryClient();
-    const onError = useOnSettingsChangeError("Timer");
-
-    return useMutation(
+    return useValetudoFetchingMutation(
+        useOnSettingsChangeError("Timer"),
+        CacheKey.Timers,
         (timerId: string) => {
             return deleteTimer(timerId).then(fetchTimerInformation);
-        },
-        {
-            onSuccess(data) {
-                queryClient.setQueryData<TimerInformation>(CacheKey.Timers, data, {
-                    updatedAt: Date.now(),
-                });
-            },
-            onError,
         }
     );
 };
@@ -581,20 +651,11 @@ export const useValetudoEventsQuery = () => {
 };
 
 export const useValetudoEventsInteraction = () => {
-    const queryClient = useQueryClient();
-    const onError = useOnSettingsChangeError("Valetudo Events");
-
-    return useMutation(
+    return useValetudoFetchingMutation(
+        useOnSettingsChangeError("Valetudo Events"),
+        CacheKey.ValetudoEvents,
         (interaction: ValetudoEventInteractionContext) => {
             return sendValetudoEventInteraction(interaction).then(fetchValetudoEvents);
-        },
-        {
-            onSuccess(data) {
-                queryClient.setQueryData<Array<ValetudoEvent>>(CacheKey.ValetudoEvents, data, {
-                    updatedAt: Date.now(),
-                });
-            },
-            onError,
         }
     );
 };
@@ -617,20 +678,206 @@ export const useLogLevelQuery = () => {
 };
 
 export const useLogLevelMutation = () => {
-    const queryClient = useQueryClient();
-    const onError = useOnSettingsChangeError("Log level");
-
-    return useMutation(
+    return useValetudoFetchingMutation(
+        useOnSettingsChangeError("Log level"),
+        CacheKey.LogLevel,
         (logLevel: SetLogLevel) => {
             return sendValetudoLogLevel(logLevel).then(fetchValetudoLogLevel);
-        },
+        }
+    );
+};
+
+export const usePersistentDataQuery = () => {
+    return useQuery(CacheKey.PersistentData, fetchPersistentDataState, {
+        staleTime: Infinity
+    });
+};
+
+export const usePersistentDataMutation = () => {
+    return useValetudoFetchingMutation(
+        useOnCommandError(Capability.PersistentMapControl),
+        CacheKey.PersistentData,
+        (enable: boolean) => {
+            return sendPersistentDataEnable(enable).then(fetchPersistentDataState);
+        }
+    );
+};
+
+export const useMapResetMutation = () => {
+    const onError = useOnCommandError(Capability.MapReset);
+
+    return useMutation(
+        sendMapReset,
         {
-            onSuccess(data) {
-                queryClient.setQueryData<LogLevel>(CacheKey.LogLevel, data, {
-                    updatedAt: Date.now(),
-                });
-            },
             onError,
+        }
+    );
+};
+
+export const useStartMappingPassMutation = () => {
+    const onError = useOnCommandError(Capability.MappingPass);
+
+    return useMutation(
+        sendStartMappingPass,
+        {
+            onError,
+        }
+    );
+};
+
+export const useSpeakerVolumeStateQuery = () => {
+    return useQuery(CacheKey.SpeakerVolume, fetchSpeakerVolumeState, {
+        staleTime: Infinity
+    });
+};
+
+export const useSpeakerVolumeMutation = () => {
+    return useValetudoFetchingMutation(
+        useOnCommandError(Capability.SpeakerVolumeControl),
+        CacheKey.SpeakerVolume,
+        (volume: number) => {
+            return sendSpeakerVolume(volume).then(fetchSpeakerVolumeState);
+        }
+    );
+};
+
+export const useSpeakerTestTriggerTriggerMutation = () => {
+    const onError = useOnCommandError(Capability.SpeakerTest);
+
+    return useMutation(sendSpeakerTestCommand, {onError});
+};
+
+export const useVoicePackManagementStateQuery = () => {
+    return useQuery(CacheKey.VoicePackManagement, fetchVoicePackManagementState, {
+        staleTime: 500,
+    });
+};
+
+export const useVoicePackManagementMutation = () => {
+    return useValetudoFetchingMutation(
+        useOnCommandError(Capability.VoicePackManagement),
+        CacheKey.VoicePackManagement,
+        (command: VoicePackManagementCommand) => {
+            return sendVoicePackManagementCommand(command).then(fetchVoicePackManagementState);
+        }
+    );
+};
+
+export const useKeyLockStateQuery = () => {
+    return useQuery(CacheKey.KeyLockInformation, fetchKeyLockState, {
+        staleTime: Infinity
+    });
+};
+
+export const useKeyLockStateMutation = () => {
+    return useValetudoFetchingMutation(
+        useOnCommandError(Capability.KeyLock),
+        CacheKey.KeyLockInformation,
+        (enable: boolean) => {
+            return sendKeyLockEnable(enable).then(fetchKeyLockState);
+        }
+    );
+};
+
+export const useCarpetModeStateQuery = () => {
+    return useQuery(CacheKey.CarpetMode, fetchCarpetModeState, {
+        staleTime: Infinity
+    });
+};
+
+export const useCarpetModeStateMutation = () => {
+    return useValetudoFetchingMutation(
+        useOnCommandError(Capability.CarpetModeControl),
+        CacheKey.CarpetMode,
+        (enable: boolean) => {
+            return sendCarpetModeEnable(enable).then(fetchCarpetModeState);
+        }
+    );
+};
+
+export const useObstacleAvoidanceModeStateQuery = () => {
+    return useQuery(CacheKey.ObstacleAvoidance, fetchObstacleAvoidanceModeState, {
+        staleTime: Infinity
+    });
+};
+
+export const useObstacleAvoidanceModeStateMutation = () => {
+    return useValetudoFetchingMutation(
+        useOnCommandError(Capability.ObstacleAvoidanceControl),
+        CacheKey.ObstacleAvoidance,
+        (enable: boolean) => {
+            return sendObstacleAvoidanceModeEnable(enable).then(fetchObstacleAvoidanceModeState);
+        }
+    );
+};
+
+export const useAutoEmptyDockAutoEmptyControlQuery = () => {
+    return useQuery(CacheKey.AutoEmptyDockAutoEmpty, fetchAutoEmptyDockAutoEmptyControlState, {
+        staleTime: Infinity
+    });
+};
+
+export const useAutoEmptyDockAutoEmptyControlMutation = () => {
+    return useValetudoFetchingMutation(
+        useOnCommandError(Capability.ObstacleAvoidanceControl),
+        CacheKey.AutoEmptyDockAutoEmpty,
+        (enable: boolean) => {
+            return sendAutoEmptyDockAutoEmptyControlEnable(enable).then(fetchAutoEmptyDockAutoEmptyControlState);
+        }
+    );
+};
+
+export const useDoNotDisturbConfigurationQuery = () => {
+    return useQuery(CacheKey.DoNotDisturb, fetchDoNotDisturbConfiguration, {
+        staleTime: Infinity
+    });
+};
+
+export const useDoNotDisturbConfigurationMutation = () => {
+    return useValetudoFetchingMutation(
+        useOnCommandError(Capability.DoNotDisturb),
+        CacheKey.DoNotDisturb,
+        (configuration: DoNotDisturbConfiguration) => {
+            return sendDoNotDisturbConfiguration(configuration).then(fetchDoNotDisturbConfiguration);
+        }
+    );
+};
+
+export const useWifiConfigurationQuery = () => {
+    return useQuery(CacheKey.Wifi, fetchWifiConfiguration, {
+        staleTime: Infinity
+    });
+};
+
+export const useWifiConfigurationMutation = () => {
+    return useValetudoFetchingMutation(
+        useOnCommandError(Capability.WifiConfiguration),
+        CacheKey.Wifi,
+        (configuration: WifiConfiguration) => {
+            return sendWifiConfiguration(configuration).then(fetchWifiConfiguration);
+        }
+    );
+};
+
+export const useManualControlStateQuery = () => {
+    return useQuery(CacheKey.ManualControl, fetchManualControlState, {
+        staleTime: 10_000,
+        refetchInterval: 10_000
+    });
+};
+
+export const useManualControlPropertiesQuery = () => {
+    return useQuery(CacheKey.ManualControlProperties, fetchManualControlProperties, {
+        staleTime: Infinity
+    });
+};
+
+export const useManualControlInteraction = () => {
+    return useValetudoFetchingMutation(
+        useOnCommandError(Capability.ManualControl),
+        CacheKey.ManualControl,
+        (interaction: ManualControlInteraction) => {
+            return sendManualControlInteraction(interaction).then(fetchManualControlState);
         }
     );
 };

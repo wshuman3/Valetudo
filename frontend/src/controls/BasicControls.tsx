@@ -6,7 +6,7 @@ import {
     Paper,
     styled,
     Typography,
-} from "@material-ui/core";
+} from "@mui/material";
 import {
     BasicControlCommand,
     Capability,
@@ -24,7 +24,7 @@ import {
     Stop as StopIcon,
     RestoreFromTrash as EmptyIcon,
     SvgIconComponent,
-} from "@material-ui/icons";
+} from "@mui/icons-material";
 import { useCapabilitiesSupported } from "../CapabilitiesProvider";
 
 const StyledIcon = styled(Icon)(({ theme }) => {
@@ -34,7 +34,7 @@ const StyledIcon = styled(Icon)(({ theme }) => {
     };
 });
 
-const StartStates: StatusState["value"][] = ["idle", "docked", "paused"];
+const StartStates: StatusState["value"][] = ["idle", "docked", "paused", "error"];
 const PauseStates: StatusState["value"][] = ["cleaning", "returning", "moving"];
 
 interface CommandButton {
@@ -111,7 +111,7 @@ const BasicControls = (): JSX.Element => {
         },
         {
             command: "home",
-            enabled: state === "idle",
+            enabled: state === "idle" || state === "error",
             Icon: HomeIcon,
             label: "Dock",
         },

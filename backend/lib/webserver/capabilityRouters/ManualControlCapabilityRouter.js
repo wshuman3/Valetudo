@@ -1,3 +1,5 @@
+const escapeHtml = require("escape-html");
+
 const Logger = require("../../Logger");
 
 const CapabilityRouter = require("./CapabilityRouter");
@@ -5,6 +7,12 @@ const CapabilityRouter = require("./CapabilityRouter");
 class ManualControlCapabilityRouter extends CapabilityRouter {
 
     initRoutes() {
+        this.router.get("/", async (req, res) => {
+            res.json({
+                enabled: await this.capability.manualControlActive()
+            });
+        });
+
         this.router.put("/", async (req, res) => {
             if (req.body && req.body.action) {
                 switch (req.body.action) {
@@ -40,7 +48,7 @@ class ManualControlCapabilityRouter extends CapabilityRouter {
                         }
                         break;
                     default:
-                        res.status(400).send("Invalid action \"" + req.body.action + "\" in request body");
+                        res.status(400).send(`Invalid action "${escapeHtml(req.body.action)}" in request body`);
                 }
             } else {
                 res.status(400).send("Missing action in request body");

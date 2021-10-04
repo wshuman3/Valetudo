@@ -5,17 +5,25 @@ import {
     Capability,
     ConsumableId,
     ConsumableState,
+    DoNotDisturbConfiguration,
     GitHubRelease,
     GoToLocation,
+    HTTPBasicAuthConfiguration,
     LogLevel,
+    ManualControlInteraction,
+    ManualControlProperties,
     MapSegmentationActionRequestParameters,
     MapSegmentationProperties,
     MQTTConfiguration,
     MQTTProperties,
+    NTPClientConfiguration,
+    NTPClientState,
     Point,
     RobotInformation,
     Segment,
     SetLogLevel,
+    SimpleToggleState,
+    SpeakerVolumeState,
     SystemHostInfo,
     SystemRuntimeInfo,
     Timer,
@@ -24,6 +32,9 @@ import {
     ValetudoEvent,
     ValetudoEventInteractionContext,
     ValetudoVersion,
+    VoicePackManagementCommand,
+    VoicePackManagementStatus,
+    WifiConfiguration,
     Zone,
     ZonePreset,
     ZoneProperties,
@@ -130,7 +141,7 @@ export const updatePresetSelection = async (
     capability: Capability.FanSpeedControl | Capability.WaterUsageControl,
     level: PresetSelectionState["value"]
 ): Promise<void> => {
-    await valetudoAPI.put<void>(`/robot/capabilities/${capability}/preset`, {
+    await valetudoAPI.put(`/robot/capabilities/${capability}/preset`, {
         name: level,
     });
 };
@@ -139,7 +150,7 @@ export type BasicControlCommand = "start" | "stop" | "pause" | "home";
 export const sendBasicControlCommand = async (
     command: BasicControlCommand
 ): Promise<void> => {
-    await valetudoAPI.put<void>(
+    await valetudoAPI.put(
         `/robot/capabilities/${Capability.BasicControl}`,
         {
             action: command,
@@ -148,7 +159,7 @@ export const sendBasicControlCommand = async (
 };
 
 export const sendGoToCommand = async (point: Point): Promise<void> => {
-    await valetudoAPI.put<void>(
+    await valetudoAPI.put(
         `/robot/capabilities/${Capability.GoToLocation}`,
         {
             action: "goto",
@@ -178,7 +189,7 @@ export const fetchZoneProperties = async (): Promise<ZoneProperties> => {
 };
 
 export const sendCleanZonePresetCommand = async (id: string): Promise<void> => {
-    await valetudoAPI.put<void>(
+    await valetudoAPI.put(
         `/robot/capabilities/${Capability.ZoneCleaning}/presets/${id}`,
         {
             action: "clean",
@@ -189,7 +200,7 @@ export const sendCleanZonePresetCommand = async (id: string): Promise<void> => {
 export const sendCleanTemporaryZonesCommand = async (
     zones: Zone[]
 ): Promise<void> => {
-    await valetudoAPI.put<void>(
+    await valetudoAPI.put(
         `/robot/capabilities/${Capability.ZoneCleaning}`,
         {
             action: "clean",
@@ -219,7 +230,7 @@ export const fetchMapSegmentationProperties = async (): Promise<MapSegmentationP
 export const sendCleanSegmentsCommand = async (
     parameters: MapSegmentationActionRequestParameters
 ): Promise<void> => {
-    await valetudoAPI.put<void>(
+    await valetudoAPI.put(
         `/robot/capabilities/${Capability.MapSegmentation}`,
         {
             action: "start_segment_action",
@@ -243,7 +254,7 @@ export const fetchGoToLocationPresets = async (): Promise<Segment[]> => {
 export const sendGoToLocationPresetCommand = async (
     id: string
 ): Promise<void> => {
-    await valetudoAPI.put<void>(
+    await valetudoAPI.put(
         `/robot/capabilities/${Capability.GoToLocation}/presets/${id}`,
         {
             action: "goto",
@@ -252,13 +263,13 @@ export const sendGoToLocationPresetCommand = async (
 };
 
 export const sendLocateCommand = async (): Promise<void> => {
-    await valetudoAPI.put<void>(`/robot/capabilities/${Capability.Locate}`, {
+    await valetudoAPI.put(`/robot/capabilities/${Capability.Locate}`, {
         action: "locate",
     });
 };
 
 export const sendAutoEmptyDockManualTriggerCommand = async (): Promise<void> => {
-    await valetudoAPI.put<void>(`/robot/capabilities/${Capability.AutoEmptyDockManualTrigger}`, {
+    await valetudoAPI.put(`/robot/capabilities/${Capability.AutoEmptyDockManualTrigger}`, {
         action: "trigger",
     });
 };
@@ -277,7 +288,7 @@ export const sendConsumableReset = async (parameters: ConsumableId): Promise<voi
         urlFragment += `/${parameters.subType}`;
     }
     return valetudoAPI
-        .put<MQTTConfiguration>(`/robot/capabilities/${Capability.ConsumableMonitoring}/${urlFragment}`, {
+        .put(`/robot/capabilities/${Capability.ConsumableMonitoring}/${urlFragment}`, {
             action: "reset",
         })
         .then(({status}) => {
@@ -332,7 +343,7 @@ export const fetchValetudoLogLevel = async (): Promise<LogLevel> => {
 
 export const sendValetudoLogLevel = async (logLevel: SetLogLevel): Promise<void> => {
     await valetudoAPI
-        .put<void>("/valetudo/log/level", logLevel)
+        .put("/valetudo/log/level", logLevel)
         .then(({ status }) => {
             if (status !== 202) {
                 throw new Error("Could not set new log level");
@@ -383,7 +394,7 @@ export const fetchMQTTConfiguration = async (): Promise<MQTTConfiguration> => {
 
 export const sendMQTTConfiguration = async (mqttConfiguration: MQTTConfiguration): Promise<void> => {
     return valetudoAPI
-        .put<MQTTConfiguration>("/valetudo/config/interfaces/mqtt", mqttConfiguration)
+        .put("/valetudo/config/interfaces/mqtt", mqttConfiguration)
         .then(({status}) => {
             if (status !== 202) {
                 throw new Error("Could not update MQTT configuration");
@@ -396,6 +407,50 @@ export const fetchMQTTProperties = async (): Promise<MQTTProperties> => {
         .get<MQTTProperties>("/valetudo/config/interfaces/mqtt/properties")
         .then(({data}) => {
             return data;
+        });
+};
+
+export const fetchHTTPBasicAuthConfiguration = async (): Promise<HTTPBasicAuthConfiguration> => {
+    return valetudoAPI
+        .get<HTTPBasicAuthConfiguration>("/valetudo/config/interfaces/http/auth/basic")
+        .then(({data}) => {
+            return data;
+        });
+};
+
+export const sendHTTPBasicAuthConfiguration = async (configuration: HTTPBasicAuthConfiguration): Promise<void> => {
+    return valetudoAPI
+        .put("/valetudo/config/interfaces/http/auth/basic", configuration)
+        .then(({status}) => {
+            if (status !== 201) {
+                throw new Error("Could not update HTTP basic auth configuration");
+            }
+        });
+};
+
+export const fetchNTPClientState = async (): Promise<NTPClientState> => {
+    return valetudoAPI
+        .get<NTPClientState>("/ntpclient/state")
+        .then(({data}) => {
+            return data;
+        });
+};
+
+export const fetchNTPClientConfiguration = async (): Promise<NTPClientConfiguration> => {
+    return valetudoAPI
+        .get<NTPClientConfiguration>("/ntpclient/config")
+        .then(({data}) => {
+            return data;
+        });
+};
+
+export const sendNTPClientConfiguration = async (configuration: NTPClientConfiguration): Promise<void> => {
+    return valetudoAPI
+        .put("/ntpclient/config", configuration)
+        .then(({status}) => {
+            if (status !== 202) {
+                throw new Error("Could not update NTP client configuration");
+            }
         });
 };
 
@@ -449,6 +504,209 @@ export const sendValetudoEventInteraction = async (interaction: ValetudoEventInt
         .then(({ status }) => {
             if (status !== 200) {
                 throw new Error("Could not interact with event");
+            }
+        });
+};
+
+export const fetchPersistentDataState = async (): Promise<SimpleToggleState> => {
+    return valetudoAPI
+        .get<SimpleToggleState>(`/robot/capabilities/${Capability.PersistentMapControl}`)
+        .then(({ data }) => {
+            return data;
+        });
+};
+
+const sendToggleMutation = async (capability: Capability, enable: boolean): Promise<void> => {
+    await valetudoAPI
+        .put(`/robot/capabilities/${capability}`, {
+            action: enable ? "enable" : "disable"
+        })
+        .then(({ status }) => {
+            if (status !== 200) {
+                throw new Error(`Could not change ${capability} state`);
+            }
+        });
+};
+
+export const sendPersistentDataEnable = async (enable: boolean): Promise<void> => {
+    await sendToggleMutation(Capability.PersistentMapControl, enable);
+};
+
+export const sendMapReset = async (): Promise<void> => {
+    await valetudoAPI
+        .put(`/robot/capabilities/${Capability.MapReset}`, {
+            action: "reset"
+        })
+        .then(({ status }) => {
+            if (status !== 200) {
+                throw new Error("Could not reset the map");
+            }
+        });
+};
+
+export const sendStartMappingPass = async (): Promise<void> => {
+    await valetudoAPI
+        .put(`/robot/capabilities/${Capability.MappingPass}`, {
+            action: "start_mapping"
+        })
+        .then(({ status }) => {
+            if (status !== 200) {
+                throw new Error("Could not start the mapping pass");
+            }
+        });
+};
+
+export const fetchSpeakerVolumeState = async (): Promise<SpeakerVolumeState> => {
+    return valetudoAPI
+        .get<SpeakerVolumeState>(`/robot/capabilities/${Capability.SpeakerVolumeControl}`)
+        .then(({ data }) => {
+            return data;
+        });
+};
+
+export const sendSpeakerVolume = async (volume: number): Promise<void> => {
+    await valetudoAPI
+        .put(`/robot/capabilities/${Capability.SpeakerVolumeControl}`, {
+            action: "set_volume",
+            value: volume,
+        })
+        .then(({ status }) => {
+            if (status !== 200) {
+                throw new Error("Could not change speaker volume");
+            }
+        });
+};
+
+export const fetchVoicePackManagementState = async (): Promise<VoicePackManagementStatus> => {
+    return valetudoAPI
+        .get<VoicePackManagementStatus>(`/robot/capabilities/${Capability.VoicePackManagement}`)
+        .then(({ data }) => {
+            return data;
+        });
+};
+
+export const sendVoicePackManagementCommand = async (command: VoicePackManagementCommand): Promise<void> => {
+    return valetudoAPI
+        .put(`/robot/capabilities/${Capability.VoicePackManagement}`, command)
+        .then(({status}) => {
+            if (status !== 200) {
+                throw new Error("Could not send voice pack management command");
+            }
+        });
+};
+
+export const sendSpeakerTestCommand = async (): Promise<void> => {
+    await valetudoAPI.put(`/robot/capabilities/${Capability.SpeakerTest}`, {
+        action: "play_test_sound",
+    });
+};
+
+export const fetchKeyLockState = async (): Promise<SimpleToggleState> => {
+    return valetudoAPI
+        .get<SimpleToggleState>(`/robot/capabilities/${Capability.KeyLock}`)
+        .then(({ data }) => {
+            return data;
+        });
+};
+
+export const sendKeyLockEnable = async (enable: boolean): Promise<void> => {
+    await sendToggleMutation(Capability.KeyLock, enable);
+};
+
+export const fetchCarpetModeState = async (): Promise<SimpleToggleState> => {
+    return valetudoAPI
+        .get<SimpleToggleState>(`/robot/capabilities/${Capability.CarpetModeControl}`)
+        .then(({ data }) => {
+            return data;
+        });
+};
+
+export const sendCarpetModeEnable = async (enable: boolean): Promise<void> => {
+    await sendToggleMutation(Capability.CarpetModeControl, enable);
+};
+
+export const fetchObstacleAvoidanceModeState = async (): Promise<SimpleToggleState> => {
+    return valetudoAPI
+        .get<SimpleToggleState>(`/robot/capabilities/${Capability.ObstacleAvoidanceControl}`)
+        .then(({ data }) => {
+            return data;
+        });
+};
+
+export const sendObstacleAvoidanceModeEnable = async (enable: boolean): Promise<void> => {
+    await sendToggleMutation(Capability.ObstacleAvoidanceControl, enable);
+};
+
+export const fetchAutoEmptyDockAutoEmptyControlState = async (): Promise<SimpleToggleState> => {
+    return valetudoAPI
+        .get<SimpleToggleState>(`/robot/capabilities/${Capability.AutoEmptyDockAutoEmptyControl}`)
+        .then(({ data }) => {
+            return data;
+        });
+};
+
+export const sendAutoEmptyDockAutoEmptyControlEnable = async (enable: boolean): Promise<void> => {
+    await sendToggleMutation(Capability.AutoEmptyDockAutoEmptyControl, enable);
+};
+
+export const fetchDoNotDisturbConfiguration = async (): Promise<DoNotDisturbConfiguration> => {
+    return valetudoAPI
+        .get<DoNotDisturbConfiguration>(`/robot/capabilities/${Capability.DoNotDisturb}`)
+        .then(({ data }) => {
+            return data;
+        });
+};
+
+export const sendDoNotDisturbConfiguration = async (configuration: DoNotDisturbConfiguration): Promise<void> => {
+    await valetudoAPI
+        .put(`/robot/capabilities/${Capability.DoNotDisturb}`, configuration)
+        .then(({ status }) => {
+            if (status !== 200) {
+                throw new Error("Could not update DND configuration");
+            }
+        });
+};
+
+export const fetchWifiConfiguration = async (): Promise<WifiConfiguration> => {
+    return valetudoAPI
+        .get<WifiConfiguration>(`/robot/capabilities/${Capability.WifiConfiguration}`)
+        .then(({ data }) => {
+            return data;
+        });
+};
+
+export const sendWifiConfiguration = async (configuration: WifiConfiguration): Promise<void> => {
+    await valetudoAPI
+        .put(`/robot/capabilities/${Capability.WifiConfiguration}`, configuration)
+        .then(({ status }) => {
+            if (status !== 200) {
+                throw new Error("Could not set Wifi configuration");
+            }
+        });
+};
+
+export const fetchManualControlState = async (): Promise<SimpleToggleState> => {
+    return valetudoAPI
+        .get<SimpleToggleState>(`/robot/capabilities/${Capability.ManualControl}`)
+        .then(({ data }) => {
+            return data;
+        });
+};
+
+export const fetchManualControlProperties = async (): Promise<ManualControlProperties> => {
+    return valetudoAPI
+        .get<ManualControlProperties>(`/robot/capabilities/${Capability.ManualControl}/properties`)
+        .then(({ data }) => {
+            return data;
+        });
+};
+
+export const sendManualControlInteraction = async (interaction: ManualControlInteraction): Promise<void> => {
+    await valetudoAPI
+        .put(`/robot/capabilities/${Capability.ManualControl}`, interaction)
+        .then(({ status }) => {
+            if (status !== 200) {
+                throw new Error("Could not send manual control interaction");
             }
         });
 };

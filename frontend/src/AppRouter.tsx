@@ -2,9 +2,9 @@ import {HashRouter, Redirect, Route, Switch} from "react-router-dom";
 import Div100vh from "react-div-100vh";
 import HomePage from "./HomePage";
 import SettingsRouter from "./settings";
-import {Box, styled} from "@material-ui/core";
+import {Box, PaletteMode, styled} from "@mui/material";
 import RobotRouter from "./robot";
-import ValetudoAppBar from "./compontents/ValetudoAppBar";
+import ValetudoAppBar from "./components/ValetudoAppBar";
 import React from "react";
 
 const Root = styled(Div100vh)({
@@ -21,17 +21,21 @@ const Content = styled("main")({
     overflow: "auto",
 });
 
-const AppRouter = (): JSX.Element => {
+const AppRouter: React.FunctionComponent<{ paletteMode: PaletteMode, setPaletteMode: (newMode: PaletteMode) => void }> = ({
+    paletteMode,
+    setPaletteMode
+}): JSX.Element => {
     return (
         <HashRouter>
             <Root>
                 <Content>
-                    <ValetudoAppBar/>
+                    <ValetudoAppBar paletteMode={paletteMode} setPaletteMode={setPaletteMode}/>
                     <Switch>
                         <Route exact path="/">
                             <HomePage/>
                         </Route>
                         <Route path="/robot">
+                            <Box pt={2}/>
                             <RobotRouter/>
                         </Route>
                         <Route path="/settings">
