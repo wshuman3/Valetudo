@@ -23,6 +23,7 @@ const NTPClientRouter = require("./NTPClientRouter");
 const SSDPRouter = require("./SSDPRouter");
 const SystemRouter = require("./SystemRouter");
 const TimerRouter = require("./TimerRouter");
+const UpdaterRouter = require("./UpdaterRouter");
 const ValetudoEventRouter = require("./ValetudoEventRouter");
 
 class WebServer {
@@ -30,6 +31,7 @@ class WebServer {
      * @param {object} options
      * @param {import("../core/ValetudoRobot")} options.robot
      * @param {import("../NTPClient")} options.ntpClient
+     * @param {import("../updater/Updater")} options.updater
      * @param {import("../ValetudoEventStore")} options.valetudoEventStore
      * @param {import("../Configuration")} options.config
      */
@@ -52,6 +54,7 @@ class WebServer {
         this.app.use(bodyParser.json());
 
         this.app.disable("x-powered-by");
+        this.app.use(Middlewares.CSPMiddleware);
         this.app.use(Middlewares.VersionMiddleware);
 
         const authMiddleware = this.createAuthMiddleware();
@@ -118,11 +121,13 @@ class WebServer {
 
         this.app.use("/api/v2/events/", new ValetudoEventRouter({valetudoEventStore: this.valetudoEventStore, validator: this.validator}).getRouter());
 
+        this.app.use("/api/v2/updater/", new UpdaterRouter({config: this.config, updater: options.updater, validator: this.validator}).getRouter());
+
         this.app.use("/_ssdp/", new SSDPRouter({config: this.config, robot: this.robot}).getRouter());
 
-        this.app.use(express.static(path.join(__dirname, "../../..", "old_frontend/lib")));
+        this.app.use(express.static(path.join(__dirname, "../../..", "frontend/build")));
 
-        this.app.use("/new_frontend", express.static(path.join(__dirname, "../../..", "frontend/build")));
+        this.app.use("/old_frontend", express.static(path.join(__dirname, "../../..", "old_frontend/lib")));
 
         this.app.get("/api/v2", (req, res) => {
             let endpoints = listEndpoints(this.app);

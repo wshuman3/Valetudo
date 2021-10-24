@@ -1,20 +1,14 @@
 import {
-    Accordion,
-    AccordionDetails,
-    AccordionSummary,
-    Box,
-    CircularProgress,
-    Divider,
+    Box, CircularProgress,
     Grid,
     LinearProgress,
-    linearProgressClasses,
+    linearProgressClasses, Paper,
     styled,
     ToggleButton,
     ToggleButtonGroup,
     Typography,
 } from "@mui/material";
 import { green, red, yellow } from "@mui/material/colors";
-import { ExpandMore as ExpandMoreIcon } from "@mui/icons-material";
 import React from "react";
 import {
     RobotAttributeClass,
@@ -77,6 +71,14 @@ const RobotStatus = (): JSX.Element => {
             return <Typography color="error">Error loading robot state</Typography>;
         }
 
+        if (isLoading) {
+            return (
+                <Grid item>
+                    <CircularProgress color="inherit" size="1rem" />
+                </Grid>
+            );
+        }
+
         if (status === undefined) {
             return null;
         }
@@ -87,7 +89,7 @@ const RobotStatus = (): JSX.Element => {
                 {status.flag !== "none" ? <> &ndash; {status.flag}</> : ""}
             </Typography>
         );
-    }, [isStatusError, status]);
+    }, [isStatusError, status, isLoading]);
 
     const batteriesDetails = React.useMemo(() => {
         if (isBatteryError) {
@@ -106,14 +108,13 @@ const RobotStatus = (): JSX.Element => {
             return (
                 <Grid container key={index.toString()} direction="column" spacing={1}>
                     <Grid item container spacing={1}>
-                        {battery.flag !== "none" && (
-                            <Grid item xs>
-                                <Typography variant="overline" color="textSecondary">
-                                    {battery.flag}
-                                </Typography>
-                            </Grid>
-                        )}
-                        <Grid item xs>
+
+                    </Grid>
+                    <Grid item>
+                        <Box display="flex" alignItems="center">
+                            <Box width="100%" mr={1}>
+                                <BatteryProgress value={battery.level} variant="determinate" />
+                            </Box>
                             <Typography
                                 variant="overline"
                                 style={{
@@ -122,10 +123,7 @@ const RobotStatus = (): JSX.Element => {
                             >
                                 {Math.round(battery.level)}%
                             </Typography>
-                        </Grid>
-                    </Grid>
-                    <Grid item>
-                        <BatteryProgress value={battery.level} variant="determinate" />
+                        </Box>
                     </Grid>
                 </Grid>
             );
@@ -163,34 +161,16 @@ const RobotStatus = (): JSX.Element => {
     }, [attachments, isAttachmentError]);
 
     return (
-        <Accordion defaultExpanded={true}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Grid
-                    container
-                    spacing={3}
-                    alignItems="center"
-                    justifyContent="space-between"
-                >
-                    <Grid item>
-                        <Typography>Status</Typography>
-                    </Grid>
-                    {isLoading && (
-                        <Grid item>
-                            <CircularProgress color="inherit" size="1rem" />
-                        </Grid>
-                    )}
-                </Grid>
-            </AccordionSummary>
-            <Divider />
-            <Box p={1} />
-            <AccordionDetails>
+        <Paper>
+            <Box p={1}>
+
                 <Grid container spacing={2} direction="column">
                     <Grid item container>
                         <Grid item xs container direction="column">
                             <Grid item>
                                 <Typography variant="subtitle2">State</Typography>
                             </Grid>
-                            <Grid item>{stateDetails}</Grid>
+                            <Grid item style={{maxHeight: "2rem"}}>{stateDetails}</Grid>
                         </Grid>
                         {batteries !== undefined && batteries.length > 0 && (
                             <Grid item xs container direction="column">
@@ -208,8 +188,8 @@ const RobotStatus = (): JSX.Element => {
                         <Grid item>{attachmentDetails}</Grid>
                     </Grid>
                 </Grid>
-            </AccordionDetails>
-        </Accordion>
+            </Box>
+        </Paper>
     );
 };
 

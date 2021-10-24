@@ -53,7 +53,7 @@
                 'with':
                   {
                     'name': 'valetudo-armv7-lowmem',
-                    'path': './build/armv7/valetudo_lowmem',
+                    'path': './build/armv7/valetudo-lowmem',
                   },
               },
               {
@@ -85,7 +85,7 @@
                 'with':
                   {
                     'name': 'valetudo-armv7-lowmem.upx',
-                    'path': './build/armv7/valetudo_lowmem.upx',
+                    'path': './build/armv7/valetudo-lowmem.upx',
                   },
               },
               {
@@ -95,6 +95,20 @@
                   {
                     'name': 'valetudo-aarch64.upx',
                     'path': './build/aarch64/valetudo.upx',
+                  },
+              },
+
+              {
+                'name': 'Build manifest',
+                'run': 'npm run build_release_manifest',
+              },
+              {
+                'name': 'Upload manifest',
+                'uses': 'actions/upload-artifact@v2',
+                'with':
+                  {
+                    'name': 'valetudo_release_manifest.json',
+                    'path': './build/valetudo_release_manifest.json',
                   },
               },
             ],

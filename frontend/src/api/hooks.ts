@@ -13,7 +13,7 @@ import {
     deleteTimer,
     fetchAutoEmptyDockAutoEmptyControlState,
     fetchCapabilities,
-    fetchCarpetModeState,
+    fetchCarpetModeState, fetchCombinedVirtualRestrictionsPropertiesProperties,
     fetchConsumableStateInformation,
     fetchDoNotDisturbConfiguration,
     fetchGoToLocationPresets,
@@ -39,6 +39,7 @@ import {
     fetchSystemRuntimeInfo,
     fetchTimerInformation,
     fetchTimerProperties,
+    fetchUpdaterState,
     fetchValetudoEvents,
     fetchValetudoInformation,
     fetchValetudoLog,
@@ -53,12 +54,12 @@ import {
     sendCarpetModeEnable,
     sendCleanSegmentsCommand,
     sendCleanTemporaryZonesCommand,
-    sendCleanZonePresetCommand,
+    sendCleanZonePresetCommand, sendCombinedVirtualRestrictionsUpdate,
     sendConsumableReset,
     sendDoNotDisturbConfiguration,
     sendGoToCommand,
     sendGoToLocationPresetCommand,
-    sendHTTPBasicAuthConfiguration,
+    sendHTTPBasicAuthConfiguration, sendJoinSegmentsCommand,
     sendKeyLockEnable,
     sendLocateCommand,
     sendManualControlInteraction,
@@ -66,12 +67,13 @@ import {
     sendMQTTConfiguration,
     sendNTPClientConfiguration,
     sendObstacleAvoidanceModeEnable,
-    sendPersistentDataEnable,
+    sendPersistentDataEnable, sendRenameSegmentCommand,
     sendSpeakerTestCommand,
-    sendSpeakerVolume,
+    sendSpeakerVolume, sendSplitSegmentCommand,
     sendStartMappingPass,
     sendTimerCreation,
     sendTimerUpdate,
+    sendUpdaterCommand,
     sendValetudoEventInteraction,
     sendValetudoLogLevel,
     sendVoicePackManagementCommand,
@@ -90,11 +92,15 @@ import {
 import { isAttribute } from "./utils";
 import {
     Capability,
+    CombinedVirtualRestrictionsUpdateRequestParameters,
     ConsumableId,
     DoNotDisturbConfiguration,
     HTTPBasicAuthConfiguration,
     ManualControlInteraction,
     MapSegmentationActionRequestParameters,
+    MapSegmentEditJoinRequestParameters,
+    MapSegmentEditSplitRequestParameters,
+    MapSegmentRenameRequestParameters,
     MQTTConfiguration,
     NTPClientConfiguration,
     NTPClientState,
@@ -145,13 +151,24 @@ enum CacheKey {
     Wifi = "wifi",
     ManualControl = "manual_control",
     ManualControlProperties = "manual_control_properties",
+    CombinedVirtualRestrictionsProperties = "combined_virtual_restrictions_properties",
+    UpdaterState = "updater_state"
 }
 
-const useOnCommandError = (capability: Capability): ((error: unknown) => void) => {
+const useOnCommandError = (capability: Capability | string): ((error: unknown) => void) => {
     const {enqueueSnackbar} = useSnackbar();
 
-    return React.useCallback((error: unknown) => {
-        enqueueSnackbar(`An error occurred while sending command to ${capability}: ${error}`, {
+    return React.useCallback((error: any) => {
+        let errorMessage = "";
+        if (typeof error?.toString === "function") {
+            errorMessage = error.toString();
+        }
+
+        if (typeof error?.response?.data === "string") {
+            errorMessage = error.response.data;
+        }
+
+        enqueueSnackbar(`An error occurred while sending command to ${capability}:\n${errorMessage}`, {
             preventDuplicate: true,
             key: capability,
             variant: "error",
@@ -422,6 +439,75 @@ export const useCleanSegmentsMutation = (
     return useMutation(
         (parameters: MapSegmentationActionRequestParameters) => {
             return sendCleanSegmentsCommand(parameters).then(fetchStateAttributes);
+        },
+        {
+            onError,
+            ...options,
+            async onSuccess(data, ...args) {
+                queryClient.setQueryData<RobotAttribute[]>(CacheKey.Attributes, data, {
+                    updatedAt: Date.now(),
+                });
+                await options?.onSuccess?.(data, ...args);
+            },
+        }
+    );
+};
+
+export const useJoinSegmentsMutation = (
+    options?: UseMutationOptions<RobotAttribute[], unknown, MapSegmentEditJoinRequestParameters>
+) => {
+    const queryClient = useQueryClient();
+    const onError = useOnCommandError(Capability.MapSegmentEdit);
+
+    return useMutation(
+        (parameters: MapSegmentEditJoinRequestParameters) => {
+            return sendJoinSegmentsCommand(parameters).then(fetchStateAttributes); //TODO: this should actually refetch the map
+        },
+        {
+            onError,
+            ...options,
+            async onSuccess(data, ...args) {
+                queryClient.setQueryData<RobotAttribute[]>(CacheKey.Attributes, data, {
+                    updatedAt: Date.now(),
+                });
+                await options?.onSuccess?.(data, ...args);
+            },
+        }
+    );
+};
+
+export const useSplitSegmentMutation = (
+    options?: UseMutationOptions<RobotAttribute[], unknown, MapSegmentEditSplitRequestParameters>
+) => {
+    const queryClient = useQueryClient();
+    const onError = useOnCommandError(Capability.MapSegmentEdit);
+
+    return useMutation(
+        (parameters: MapSegmentEditSplitRequestParameters) => {
+            return sendSplitSegmentCommand(parameters).then(fetchStateAttributes); //TODO: this should actually refetch the map
+        },
+        {
+            onError,
+            ...options,
+            async onSuccess(data, ...args) {
+                queryClient.setQueryData<RobotAttribute[]>(CacheKey.Attributes, data, {
+                    updatedAt: Date.now(),
+                });
+                await options?.onSuccess?.(data, ...args);
+            },
+        }
+    );
+};
+
+export const useRenameSegmentMutation = (
+    options?: UseMutationOptions<RobotAttribute[], unknown, MapSegmentRenameRequestParameters>
+) => {
+    const queryClient = useQueryClient();
+    const onError = useOnCommandError(Capability.MapSegmentRename);
+
+    return useMutation(
+        (parameters: MapSegmentRenameRequestParameters) => {
+            return sendRenameSegmentCommand(parameters).then(fetchStateAttributes); //TODO: this should actually refetch the map
         },
         {
             onError,
@@ -881,3 +967,43 @@ export const useManualControlInteraction = () => {
         }
     );
 };
+
+export const useCombinedVirtualRestrictionsPropertiesQuery = () => {
+    return useQuery(CacheKey.CombinedVirtualRestrictionsProperties, fetchCombinedVirtualRestrictionsPropertiesProperties, {
+        staleTime: Infinity
+    });
+};
+
+export const useCombinedVirtualRestrictionsMutation = (
+    options?: UseMutationOptions<RobotAttribute[], unknown, CombinedVirtualRestrictionsUpdateRequestParameters>
+) => {
+    const queryClient = useQueryClient();
+    const onError = useOnCommandError(Capability.CombinedVirtualRestrictions);
+
+    return useMutation(
+        (parameters: CombinedVirtualRestrictionsUpdateRequestParameters) => {
+            return sendCombinedVirtualRestrictionsUpdate(parameters).then(fetchStateAttributes); //TODO: this should actually refetch the map
+        },
+        {
+            onError,
+            ...options,
+            async onSuccess(data, ...args) {
+                queryClient.setQueryData<RobotAttribute[]>(CacheKey.Attributes, data, {
+                    updatedAt: Date.now(),
+                });
+                await options?.onSuccess?.(data, ...args);
+            },
+        }
+    );
+};
+
+export const useUpdaterStateQuery = () => {
+    return useQuery(CacheKey.UpdaterState, fetchUpdaterState);
+};
+
+export const useUpdaterCommandMutation = () => {
+    const onError = useOnCommandError("Updater");
+
+    return useMutation(sendUpdaterCommand, {onError});
+};
+

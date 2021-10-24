@@ -62,9 +62,9 @@ class MapSegmentationCapabilityMqttHandle extends CapabilityMqttHandle {
                 "  \"segment_ids\": [\n" +
                 "      \"20\",\n"+
                 "      \"18\",\n"+
-                "      \"16\",\n"+
+                "      \"16\"\n"+
                 "  ],\n"+
-                "  \"iterations\": 2\n"+
+                "  \"iterations\": 2,\n"+
                 "  \"customOrder\": true\n"+
                 "}\n" +
                 "```"

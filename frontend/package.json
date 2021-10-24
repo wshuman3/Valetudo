@@ -1,14 +1,15 @@
 {
   "name": "valetudo-frontend",
-  "homepage": "/new_frontend/",
+  "homepage": "/",
   "scripts": {
     "analyze": "source-map-explorer 'build/static/js/*.js'",
     "build": "react-scripts build",
     "eject": "react-scripts eject",
-    "watch": "cra-build-watch -p /new_frontend/",
+    "watch": "cra-build-watch -p /",
     "ts-check": "tsc --noEmit --skipLibCheck",
     "lint": "eslint .",
-    "lint_fix": "eslint . --fix"
+    "lint_fix": "eslint . --fix",
+    "prepare_commit": "npm run lint_fix && npm run ts-check"
   },
   "eslintConfig": {
     "extends": [
@@ -38,16 +39,18 @@
     "axios": "0.21.1",
     "color": "3.1.4",
     "date-fns": "2.24.0",
-    "konva": "8.2.1",
     "notistack": "2.0.2",
     "react": "17.0.2",
     "react-div-100vh": "0.6.0",
     "react-dom": "17.0.2",
-    "react-konva": "17.0.2-5",
+    "rehype-raw": "6.1.0",
+    "react-markdown": "7.0.1",
+    "remark-gfm": "3.0.0",
     "react-query": "3.24.4",
     "react-router-dom": "5.3.0",
     "react-scripts": "4.0.3",
     "react-spring-bottom-sheet": "3.4.0",
+    "semaphore": "^1.1.0",
     "uuid": "8.3.2"
   },
   "devDependencies": {

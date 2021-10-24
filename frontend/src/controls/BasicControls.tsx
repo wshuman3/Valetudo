@@ -1,44 +1,31 @@
 import {
     Box,
     Button,
+    ButtonGroup,
     Grid,
-    Icon,
     Paper,
-    styled,
     Typography,
 } from "@mui/material";
 import {
     BasicControlCommand,
-    Capability,
     StatusState,
-    useAutoEmptyDockManualTriggerMutation,
     useBasicControlMutation,
-    useLocateMutation,
     useRobotStatusQuery,
 } from "../api";
 import {
     Home as HomeIcon,
-    NotListedLocation as LocateIcon,
     Pause as PauseIcon,
     PlayArrow as StartIcon,
     Stop as StopIcon,
-    RestoreFromTrash as EmptyIcon,
     SvgIconComponent,
 } from "@mui/icons-material";
-import { useCapabilitiesSupported } from "../CapabilitiesProvider";
-
-const StyledIcon = styled(Icon)(({ theme }) => {
-    return {
-        marginRight: theme.spacing(1),
-        marginLeft: -theme.spacing(1),
-    };
-});
+import React from "react";
 
 const StartStates: StatusState["value"][] = ["idle", "docked", "paused", "error"];
 const PauseStates: StatusState["value"][] = ["cleaning", "returning", "moving"];
 
 interface CommandButton {
-    command: BasicControlCommand | "locate" | "trigger_empty";
+    command: BasicControlCommand;
     enabled: boolean;
     label: string;
     Icon: SvgIconComponent;
@@ -50,31 +37,12 @@ const BasicControls = (): JSX.Element => {
         mutate: executeBasicControlCommand,
         isLoading: basicControlIsExecuting
     } = useBasicControlMutation();
-    const [locateSupported] = useCapabilitiesSupported(Capability.Locate);
-    const {
-        mutate: locate,
-        isLoading: locateIsExecuting
-    } = useLocateMutation();
-    const [triggerEmptySupported] = useCapabilitiesSupported(Capability.AutoEmptyDockManualTrigger);
-    const {
-        mutate: triggerDockEmpty,
-        isLoading: emptyIsExecuting,
-    } = useAutoEmptyDockManualTriggerMutation();
 
-    const isLoading = basicControlIsExecuting || locateIsExecuting || emptyIsExecuting;
+    const isLoading = basicControlIsExecuting;
 
-    const sendCommand = (command: BasicControlCommand | "locate" | "trigger_empty") => {
+    const sendCommand = (command: BasicControlCommand) => {
         return () => {
-            switch (command) {
-                case "locate":
-                    locate();
-                    break;
-                case "trigger_empty":
-                    triggerDockEmpty();
-                    break;
-                default:
-                    executeBasicControlCommand(command);
-            }
+            executeBasicControlCommand(command);
         };
     };
 
@@ -117,43 +85,33 @@ const BasicControls = (): JSX.Element => {
         },
     ];
 
-    if (locateSupported) {
-        buttons.push({
-            command: "locate",
-            enabled: true,
-            label: "Locate",
-            Icon: LocateIcon,
-        });
-    }
-
-    if (triggerEmptySupported) {
-        buttons.push({
-            command: "trigger_empty",
-            enabled: state === "docked",
-            label: "Empty",
-            Icon: EmptyIcon,
-        });
-    }
-
     return (
         <Paper>
             <Box p={1}>
-                <Grid container spacing={1} justifyContent="space-evenly">
-                    {buttons.map(({ label, command, enabled, Icon }) => {
-                        return (
-                            <Grid item key={command}>
-                                <Button
-                                    variant="outlined"
-                                    size="medium"
-                                    disabled={!enabled || isLoading}
-                                    onClick={sendCommand(command)}
-                                    color="inherit"
-                                >
-                                    <StyledIcon as={Icon} /> {label}
-                                </Button>
-                            </Grid>
-                        );
-                    })}
+                <Grid item container direction="column">
+                    <Grid item>
+                        <ButtonGroup
+                            fullWidth
+                            variant="outlined"
+                        >
+                            {buttons.map(({ label, command, enabled, Icon }) => {
+                                return (
+
+                                    <Button
+                                        key={command}
+                                        variant="outlined"
+                                        size="medium"
+                                        disabled={!enabled || isLoading}
+                                        onClick={sendCommand(command)}
+                                        color="inherit"
+                                        style={{height: "3.5em", borderColor: "inherit"}}
+                                    >
+                                        <Icon />
+                                    </Button>
+                                );
+                            })}
+                        </ButtonGroup >
+                    </Grid>
                 </Grid>
             </Box>
         </Paper>

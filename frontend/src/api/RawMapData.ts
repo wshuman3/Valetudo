@@ -33,6 +33,7 @@ export interface RawMapLayerDimension {
     min: number;
     max: number;
     mid: number;
+    avg: number;
 }
 
 export interface RawMapLayerMetaData {
@@ -62,4 +63,5 @@ export enum RawMapEntityType {
 
 export interface RawMapDataMetaData {
     version: number;
+    nonce: string;
 }
